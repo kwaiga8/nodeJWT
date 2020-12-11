@@ -1,31 +1,25 @@
 const router = require('express').Router();
 const User = require('../model/User');
+const {registerValidation} = require('../validation');
 
 
 //VALIDATION
 const Joi = require('joi');
 
 router.post('/register', async (req, res, next) => {
-    const schema = Joi.object({
-        name: Joi.string().min(6).required(),
-        email: Joi.string().min(6).required().email(),
-        password: Joi.string().min(6).required()
-    });
-    // schema options
-    const options = {
-        abortEarly: false, // include all errors
-        allowUnknown: true, // ignore unknown props
-        stripUnknown: true // remove unknown props
-    };
 
-    // validate request body against schema
-    const { error, value } = await schema.validate(req.body, options);
+   const {error} = registerValidation(req.body);
 
     if (error) {
         // on fail return comma separated errors
        next( `Validation error: ${error.details.map(x => x.message).join(', ')}`);
         res.status(433);
     } else {
+        //Check if user is already in database
+        const emailExist = await User.findOne({email: req.body.email});
+        if (emailExist){
+            return res.status(433).send('Email already exists');
+        }
         const user = new User({
             name: req.body.name,
             email: req.body.email,
